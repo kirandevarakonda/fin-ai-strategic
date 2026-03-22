@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   User, FinancialProfile, HealthScore, Recommendation, 
   ProjectionData, ChatMessage, EmploymentType, JobStability,
-  RiskAppetite, InvestmentKnowledge 
+  RiskAppetite, InvestmentKnowledge, RoadmapItem 
 } from './types';
 import { storageService } from './services/storageService';
 import { financialEngine } from './services/financialEngine';
@@ -15,12 +15,14 @@ import {
   Settings, Loader2, Info, ChevronRight, CheckCircle, ChevronLeft,
   User as UserIcon, Shield, BarChart3, Zap, ArrowRight
 } from 'lucide-react';
+import ConversationalOnboarding from './components/ConversationalOnboarding';
 
 const App: React.FC = () => {
   const [showLanding, setShowLanding] = useState(!storageService.getUser());
   const [user, setUser] = useState<User | null>(storageService.getUser());
   const [profile, setProfile] = useState<FinancialProfile | null>(storageService.getProfile());
   const [recommendations, setRecommendations] = useState<Recommendation[]>(storageService.getRecommendations());
+  const [roadmap, setRoadmap] = useState<RoadmapItem[]>(storageService.getRoadmap());
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(storageService.getChatHistory());
   const [activeTab, setActiveTab] = useState<'dashboard' | 'chat'>('dashboard');
   const [loading, setLoading] = useState(false);
@@ -83,6 +85,7 @@ const App: React.FC = () => {
     setUser(null);
     setProfile(null);
     setRecommendations([]);
+    setRoadmap([]);
     setChatHistory([]);
     setShowLanding(true);
     // Force clean navigation state
@@ -236,186 +239,27 @@ const App: React.FC = () => {
 
   if (!user.onboarded) {
     return (
-      <div className="min-h-screen bg-slate-50 py-12 px-4">
-        <div className="max-w-2xl mx-auto bg-white rounded-3xl shadow-lg border border-slate-200 overflow-hidden">
-          <div className="bg-slate-900 p-8 text-white">
-            <h2 className="text-2xl font-bold mb-2">Wealth Profiling</h2>
-            <p className="text-slate-400 font-medium">Precision analysis requires detailed context.</p>
-            <div className="mt-6 flex gap-2">
-              {[1, 2, 3, 4, 5].map(s => (
-                <div key={s} className={`h-1.5 flex-1 rounded-full ${s <= step ? 'bg-indigo-500' : 'bg-slate-700'}`} />
-              ))}
-            </div>
-          </div>
+      <ConversationalOnboarding 
+        userName={user.name} 
+        onComplete={async (finalProfile) => {
+          setLoading(true);
+          setProfile(finalProfile);
+          storageService.setProfile(finalProfile);
           
-          <div className="p-8">
-            <form onSubmit={step === 5 ? handleOnboardingSubmit : (e) => { e.preventDefault(); setStep(s => s + 1); }}>
-              {step === 1 && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
-                  <h3 className="text-xl font-bold text-slate-900 mb-6">1. Strategic Context</h3>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-bold text-slate-800 mb-2 uppercase tracking-wide">Age</label>
-                      <input 
-                        type="number" 
-                        onChange={e => updateProfile({ age: parseInt(e.target.value) })} 
-                        placeholder="30" 
-                        required 
-                        className="w-full p-3 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none bg-slate-50 placeholder-slate-300" 
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-800 mb-2 uppercase tracking-wide">Country</label>
-                      <input 
-                        type="text" 
-                        defaultValue={profile?.country || 'India'} 
-                        onChange={e => updateProfile({ country: e.target.value })} 
-                        placeholder="e.g. India" 
-                        required 
-                        className="w-full p-3 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none bg-slate-50 placeholder-slate-300" 
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-800 mb-2 uppercase tracking-wide">Dependents</label>
-                    <input 
-                      type="number" 
-                      onChange={e => updateProfile({ dependents: parseInt(e.target.value) })} 
-                      placeholder="0" 
-                      required 
-                      className="w-full p-3 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none bg-slate-50 placeholder-slate-300" 
-                    />
-                  </div>
-                </div>
-              )}
-
-              {step === 2 && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
-                  <h3 className="text-xl font-bold text-slate-900 mb-6">2. Professional Status</h3>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-800 mb-2 uppercase tracking-wide">Monthly Net Income (₹/$)</label>
-                    <input 
-                      type="number" 
-                      onChange={e => updateProfile({ monthlyIncome: parseInt(e.target.value) })} 
-                      placeholder="50000" 
-                      required 
-                      className="w-full p-3 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none bg-slate-50 placeholder-slate-300" 
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-bold text-slate-800 mb-2 uppercase tracking-wide">Employment</label>
-                      <select onChange={e => updateProfile({ employmentType: e.target.value as EmploymentType })} className="w-full p-3 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none bg-slate-50">
-                        {Object.values(EmploymentType).map(v => <option key={v} value={v}>{v}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-800 mb-2 uppercase tracking-wide">Job Stability</label>
-                      <select onChange={e => updateProfile({ jobStability: e.target.value as JobStability })} className="w-full p-3 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none bg-slate-50">
-                        {Object.values(JobStability).map(v => <option key={v} value={v}>{v}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {step === 3 && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
-                  <h3 className="text-xl font-bold text-slate-900 mb-6">3. Capital Distribution</h3>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-bold text-slate-800 mb-2 uppercase tracking-wide">Fixed Expenses</label>
-                      <input 
-                        type="number" 
-                        onChange={e => updateProfile({ fixedExpenses: parseInt(e.target.value) })} 
-                        placeholder="20000" 
-                        required 
-                        className="w-full p-3 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none bg-slate-50 placeholder-slate-300" 
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-slate-800 mb-2 uppercase tracking-wide">Variable Expenses</label>
-                      <input 
-                        type="number" 
-                        onChange={e => updateProfile({ variableExpenses: parseInt(e.target.value) })} 
-                        placeholder="10000" 
-                        required 
-                        className="w-full p-3 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none bg-slate-50 placeholder-slate-300" 
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-800 mb-2 uppercase tracking-wide">Outstanding Liability</label>
-                    <input 
-                      type="number" 
-                      onChange={e => updateProfile({ totalDebt: parseInt(e.target.value) })} 
-                      placeholder="0" 
-                      required 
-                      className="w-full p-3 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none bg-slate-50 placeholder-slate-300" 
-                    />
-                  </div>
-                </div>
-              )}
-
-              {step === 4 && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
-                  <h3 className="text-xl font-bold text-slate-900 mb-6">4. Risk Management</h3>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-800 mb-2 uppercase tracking-wide">Risk Tolerance</label>
-                    <select onChange={e => updateProfile({ riskAppetite: e.target.value as RiskAppetite })} className="w-full p-3 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none bg-slate-50">
-                      {Object.values(RiskAppetite).map(v => <option key={v} value={v}>{v}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-800 mb-2 uppercase tracking-wide">Market Knowledge</label>
-                    <select onChange={e => updateProfile({ investmentKnowledge: e.target.value as InvestmentKnowledge })} className="w-full p-3 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none bg-slate-50">
-                      {Object.values(InvestmentKnowledge).map(v => <option key={v} value={v}>{v}</option>)}
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {step === 5 && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
-                  <h3 className="text-xl font-bold text-slate-900 mb-6">5. Strategic Objectives</h3>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-800 mb-2 uppercase tracking-wide">Primary Goal</label>
-                    <input 
-                      type="text" 
-                      onChange={e => updateProfile({ primaryGoal: e.target.value })} 
-                      placeholder="Wealth Generation" 
-                      required 
-                      className="w-full p-3 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none bg-slate-50 placeholder-slate-300" 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-800 mb-2 uppercase tracking-wide">Time Horizon (Years)</label>
-                    <input 
-                      type="number" 
-                      onChange={e => updateProfile({ timeHorizon: parseInt(e.target.value) })} 
-                      placeholder="15" 
-                      required 
-                      className="w-full p-3 border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none bg-slate-50 placeholder-slate-300" 
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-10 flex gap-4">
-                {step > 1 && (
-                  <button type="button" onClick={() => setStep(s => s - 1)} className="flex-1 flex items-center justify-center p-4 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-all">
-                    <ChevronLeft size={20} className="mr-1" /> Back
-                  </button>
-                )}
-                <button type="submit" disabled={loading} className="flex-[2] flex items-center justify-center p-4 bg-slate-900 text-white rounded-xl font-bold shadow-md hover:bg-slate-800 disabled:opacity-50 transition-all">
-                  {loading ? <Loader2 className="animate-spin" /> : step === 5 ? 'Execute Analysis' : 'Next Cycle'} 
-                  {!loading && <ChevronRight size={20} className="ml-1" />}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
+          const score = financialEngine.calculateHealthScore(finalProfile);
+          const { recommendations: recs, roadmap: newRoadmap } = await geminiService.analyzeProfile(finalProfile, score);
+          
+          setRecommendations(recs);
+          storageService.setRecommendations(recs);
+          setRoadmap(newRoadmap);
+          storageService.setRoadmap(newRoadmap);
+          
+          const updatedUser = { ...user!, onboarded: true };
+          setUser(updatedUser);
+          storageService.setUser(updatedUser);
+          setLoading(false);
+        }} 
+      />
     );
   }
 
@@ -497,6 +341,7 @@ const App: React.FC = () => {
             profile={profile!} 
             score={healthScore!} 
             recommendations={recommendations}
+            roadmap={roadmap}
             projections={projections}
             onAction={handleRecommendationAction}
           />

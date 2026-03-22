@@ -1,10 +1,11 @@
 
-import { User, FinancialProfile, Recommendation, ChatMessage } from '../types';
+import { User, FinancialProfile, Recommendation, ChatMessage, RoadmapItem } from '../types';
 
 const KEYS = {
   USER: 'finai_user',
   PROFILE: 'finai_profile',
   RECOMMENDATIONS: 'finai_recommendations',
+  ROADMAP: 'finai_roadmap',
   CHAT_HISTORY: 'finai_chat_history'
 };
 
@@ -29,6 +30,13 @@ export const storageService = {
   },
   setRecommendations: (recs: Recommendation[]) => {
     localStorage.setItem(KEYS.RECOMMENDATIONS, JSON.stringify(recs));
+  },
+  getRoadmap: (): RoadmapItem[] => {
+    const data = localStorage.getItem(KEYS.ROADMAP);
+    return data ? JSON.parse(data) : [];
+  },
+  setRoadmap: (roadmap: RoadmapItem[]) => {
+    localStorage.setItem(KEYS.ROADMAP, JSON.stringify(roadmap));
   },
   getChatHistory: (): ChatMessage[] => {
     const data = localStorage.getItem(KEYS.CHAT_HISTORY);

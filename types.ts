@@ -70,6 +70,13 @@ export interface Recommendation {
   status: 'pending' | 'applied' | 'ignored' | 'remind_later';
 }
 
+export interface RoadmapItem {
+  quarter: string;
+  objective: string;
+  actions: string[];
+  expectedImpact: string;
+}
+
 export interface ProjectionData {
   month: number;
   currentPath: number;
