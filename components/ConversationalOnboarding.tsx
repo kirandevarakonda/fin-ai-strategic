@@ -21,6 +21,7 @@ const ConversationalOnboarding: React.FC<ConversationalOnboardingProps> = ({ onC
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [suggestedOptions, setSuggestedOptions] = useState<string[]>(['Under 25', '25-35', '35-50', 'Over 50']);
   const [profile, setProfile] = useState<Partial<FinancialProfile>>({});
   const [isFinishing, setIsFinishing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -31,17 +32,16 @@ const ConversationalOnboarding: React.FC<ConversationalOnboardingProps> = ({ onC
     }
   }, [messages]);
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || loading) return;
+  const handleSend = async (msgOverride?: string) => {
+    const userMsg = msgOverride || input;
+    if (!userMsg.trim() || loading) return;
 
-    const userMsg = input;
     setInput('');
+    setSuggestedOptions([]); // Clear options while loading
     setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setLoading(true);
 
     try {
-      // Use Gemini to parse the response and decide the next question
       const result = await geminiService.processOnboardingMessage(userMsg, profile, messages);
       
       if (result.updatedProfile) {
@@ -49,6 +49,7 @@ const ConversationalOnboarding: React.FC<ConversationalOnboardingProps> = ({ onC
       }
 
       setMessages(prev => [...prev, { role: 'assistant', content: result.nextMessage }]);
+      setSuggestedOptions(result.suggestedOptions || []);
       
       if (result.isComplete) {
         setIsFinishing(true);
@@ -67,7 +68,7 @@ const ConversationalOnboarding: React.FC<ConversationalOnboardingProps> = ({ onC
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 sm:p-6 font-['Inter']">
       <div className="w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden flex flex-col h-[80vh]">
-        {/* Header */}
+        {/* Header content unchanged */}
         <div className="bg-slate-900 p-8 flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-4">
             <div className="p-3 bg-indigo-600 rounded-2xl text-white shadow-lg shadow-indigo-500/20">
@@ -114,6 +115,19 @@ const ConversationalOnboarding: React.FC<ConversationalOnboardingProps> = ({ onC
                </div>
             </div>
           )}
+          {suggestedOptions.length > 0 && !loading && !isFinishing && (
+            <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              {suggestedOptions.map((opt, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleSend(opt)}
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold text-slate-600 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-sm"
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          )}
           {isFinishing && (
             <div className="flex flex-col items-center justify-center space-y-4 py-10 animate-in zoom-in duration-700">
                <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center text-white shadow-xl shadow-green-500/20">
@@ -127,7 +141,7 @@ const ConversationalOnboarding: React.FC<ConversationalOnboardingProps> = ({ onC
 
         {/* Footer Input */}
         <div className="p-6 bg-slate-50/50 border-t border-slate-100 shrink-0">
-          <form onSubmit={handleSend} className="relative">
+          <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="relative">
             <input 
               type="text"
               value={input}

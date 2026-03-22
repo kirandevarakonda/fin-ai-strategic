@@ -109,7 +109,7 @@ export const geminiService = {
     }
   },
 
-  async processOnboardingMessage(message: string, currentProfile: Partial<FinancialProfile>, history: any[]): Promise<{ updatedProfile: Partial<FinancialProfile>, nextMessage: string, isComplete: boolean }> {
+  async processOnboardingMessage(message: string, currentProfile: Partial<FinancialProfile>, history: any[]): Promise<{ updatedProfile: Partial<FinancialProfile>, nextMessage: string, suggestedOptions: string[], isComplete: boolean }> {
     const ai = getGeminiAdvisor();
     
     const prompt = `
@@ -125,13 +125,11 @@ export const geminiService = {
       Rules:
       1. Parse the user's answer and update the Profile Data.
       2. If a field is missing, ask for it in the nextMessage.
-      3. Be conversational and professional.
-      4. If all fields are filled, set isComplete to true and provide a concluding message.
-      5. valid values for enums:
-         employmentType: 'Student', 'Salaried', 'Self-employed', 'Freelancer'
-         jobStability: 'Low', 'Medium', 'High'
-         riskAppetite: 'Conservative', 'Moderate', 'Aggressive'
-         investmentKnowledge: 'Beginner', 'Intermediate', 'Expert'
+      3. CRITICAL: For every question you ask in nextMessage, provide 3-4 clickable "suggestedOptions" that the user can click to answer.
+         Options should be short (1-3 words) and relevant to the question.
+      4. Be conversational and professional.
+      5. If all fields are filled, set isComplete to true and provide a concluding message.
+      6. valid enums: employmentType: 'Salaried', 'Self-employed', 'Freelancer', jobStability: 'Low', 'Medium', 'High', riskAppetite: 'Conservative', 'Moderate', 'Aggressive', investmentKnowledge: 'Beginner', 'Intermediate', 'Expert'
     `;
 
     try {
@@ -164,19 +162,27 @@ export const geminiService = {
                 }
               },
               nextMessage: { type: Type.STRING },
+              suggestedOptions: { type: Type.ARRAY, items: { type: Type.STRING } },
               isComplete: { type: Type.BOOLEAN }
             },
-            required: ["updatedProfile", "nextMessage", "isComplete"]
+            required: ["updatedProfile", "nextMessage", "suggestedOptions", "isComplete"]
           }
         }
       });
 
-      return JSON.parse(response.text || '{}');
+      const result = JSON.parse(response.text || '{}');
+      return {
+        updatedProfile: result.updatedProfile || currentProfile,
+        nextMessage: result.nextMessage,
+        suggestedOptions: result.suggestedOptions || [],
+        isComplete: !!result.isComplete
+      };
     } catch (error) {
       console.error("Onboarding Parse Error:", error);
       return { 
         updatedProfile: currentProfile, 
         nextMessage: "I'm sorry, I had trouble processing that. Could you tell me more about your financial situation?", 
+        suggestedOptions: [],
         isComplete: false 
       };
     }
